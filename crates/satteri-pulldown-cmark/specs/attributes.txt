@@ -231,8 +231,45 @@ On a list item's first line, it goes on the item:
 </ul>
 ````````````````````````````````
 
-As a line of its own in a list item, it goes on the list, as it does in a
-blockquote:
+A line of its own goes on the block it's written after, at the level its `>`
+markers and indentation put it, as kramdown places a block IAL. Written inside
+the blockquotes and list items around the paragraph, it goes on the paragraph,
+or on its list item in a tight list:
+
+```````````````````````````````` example
+> quoted
+> {.note}
+
+- a
+  {.x}
+.
+<blockquote>
+<p class="note">quoted</p>
+</blockquote>
+<ul>
+<li class="x">a</li>
+</ul>
+````````````````````````````````
+
+Written lazily, outside some of them, it goes on the outermost it leaves, or for
+a list item, on its list:
+
+```````````````````````````````` example
+> quoted
+{.note}
+
+> > nested
+> {.inner}
+.
+<blockquote class="note">
+<p>quoted</p>
+</blockquote>
+<blockquote>
+<blockquote class="inner">
+<p>nested</p>
+</blockquote>
+</blockquote>
+````````````````````````````````
 
 ```````````````````````````````` example
 - a
@@ -259,13 +296,15 @@ blockquote:
 </ul>
 ````````````````````````````````
 
+A block ending the line before still goes where it would without the line:
+
 ```````````````````````````````` example
-> quoted
-> {.note}
+- item {.first}
+{.list}
 .
-<blockquote class="note">
-<p>quoted</p>
-</blockquote>
+<ul class="list">
+<li class="first">item</li>
+</ul>
 ````````````````````````````````
 
 A paragraph holding only a block goes on the list, table or thematic break

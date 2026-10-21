@@ -231,7 +231,7 @@ Attributes on an inline element follow it with no space between: emphasis, stron
 <p><strong class="warning">Note</strong> see <a href="/guide" target="_blank">the guide</a> and <code class="cmd" id="install">npm i</code></p>
 ```
 
-A block ending a paragraph goes on the paragraph, whether it ends the last line or is a line of its own. On a list item's first line it goes on the item; as a line of its own in a list item or blockquote, it goes on the list or blockquote. A paragraph holding only a block goes on the list, table or thematic break before it, and a block ending a table cell goes on the cell:
+A block ending a paragraph's last line goes on the paragraph, or on the list item from the item's first line. A block on a line of its own goes on the block it's written after, at the level its `>` markers and indentation put it, as kramdown places a block IAL: written inside the blockquotes and list items around the paragraph, it goes on the paragraph (on its list item, in a tight list); written lazily outside some of them, it goes on the outermost it leaves, a list item giving its list. A paragraph holding only a block goes on the list, table or thematic break before it, and a block ending a table cell goes on the cell:
 
 ```text
 - Milk {.fresh}

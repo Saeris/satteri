@@ -257,6 +257,46 @@ fn attributes_test_17() {
 
 #[test]
 fn attributes_test_18() {
+    let original = r##"> quoted
+> {.note}
+
+- a
+  {.x}
+"##;
+    let expected = r##"<blockquote>
+<p class="note">quoted</p>
+</blockquote>
+<ul>
+<li class="x">a</li>
+</ul>
+"##;
+
+    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+}
+
+#[test]
+fn attributes_test_19() {
+    let original = r##"> quoted
+{.note}
+
+> > nested
+> {.inner}
+"##;
+    let expected = r##"<blockquote class="note">
+<p>quoted</p>
+</blockquote>
+<blockquote>
+<blockquote class="inner">
+<p>nested</p>
+</blockquote>
+</blockquote>
+"##;
+
+    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+}
+
+#[test]
+fn attributes_test_20() {
     let original = r##"- a
 - b
 {.my-list}
@@ -271,7 +311,7 @@ fn attributes_test_18() {
 }
 
 #[test]
-fn attributes_test_19() {
+fn attributes_test_21() {
     let original = r##"- parent
   - child
   {.inner}
@@ -289,20 +329,20 @@ fn attributes_test_19() {
 }
 
 #[test]
-fn attributes_test_20() {
-    let original = r##"> quoted
-> {.note}
+fn attributes_test_22() {
+    let original = r##"- item {.first}
+{.list}
 "##;
-    let expected = r##"<blockquote class="note">
-<p>quoted</p>
-</blockquote>
+    let expected = r##"<ul class="list">
+<li class="first">item</li>
+</ul>
 "##;
 
     test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
 }
 
 #[test]
-fn attributes_test_21() {
+fn attributes_test_23() {
     let original = r##"- a
 - b
 
@@ -318,7 +358,7 @@ fn attributes_test_21() {
 }
 
 #[test]
-fn attributes_test_22() {
+fn attributes_test_24() {
     let original = r##"---
 {.divider}
 "##;
@@ -329,7 +369,7 @@ fn attributes_test_22() {
 }
 
 #[test]
-fn attributes_test_23() {
+fn attributes_test_25() {
     let original = r##"| Head {.h} |
 | --- |
 | cell {.c} |
@@ -354,7 +394,7 @@ fn attributes_test_23() {
 }
 
 #[test]
-fn attributes_test_24() {
+fn attributes_test_26() {
     let original = r##"{.alone}
 "##;
     let expected = r##"<p class="alone"></p>
@@ -364,7 +404,7 @@ fn attributes_test_24() {
 }
 
 #[test]
-fn attributes_test_25() {
+fn attributes_test_27() {
     let original = r##"para
 {.x}
 more
@@ -381,7 +421,7 @@ more</p>
 }
 
 #[test]
-fn attributes_test_26() {
+fn attributes_test_28() {
     let original = r##"text{.a}{.b}
 "##;
     let expected = r##"<p class="b">text{.a}</p>

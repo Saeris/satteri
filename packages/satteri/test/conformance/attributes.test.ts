@@ -55,9 +55,15 @@ describe("attributes: conformance vs markdown-it-attrs", () => {
     ["block: a paragraph's last line of its own", "Another\n{#second}"],
     ["block: a line of its own after a hard break", "line\\\n{.x}"],
     ["block: a list item's first line", "- item {.red}\n- item"],
-    ["block: a line of its own in a list item goes on the list", "- a\n- b\n{.my-list}"],
+    ["block: a lazy line of its own after a list item goes on the list", "- a\n- b\n{.my-list}"],
     ["block: in a nested list item, the nested list", "- parent\n  - child\n  {.inner}"],
-    ["block: a line of its own in a blockquote", "> quoted\n> {.note}"],
+    [
+      "block: nested lists take blocks by indentation",
+      "- item 1{.a}\n  - nested item {.b}\n  {.c}\n    1. nested nested item {.d}\n    {.e}",
+    ],
+    ["block: a paragraph of its own goes on the outer list", "- item\n  - nested\n  {.red}\n\n{.blue}"],
+    ["block: a lazy line of its own after a blockquote goes on it", "> quote\n{.c}"],
+    ["block: a line of its own before more blocks goes on the paragraph", "> para\n> {.x}\n>\n> more"],
     ["block: a paragraph of its own after a list", "- a\n- b\n\n{.my-list}"],
     [
       "block: table cells and a paragraph of its own after the table",
@@ -87,6 +93,51 @@ describe("attributes: conformance vs markdown-it-attrs", () => {
       '<pre><code id="code-block" class="language-python">x\n</code></pre>',
     );
   });
+
+  // A line of its own goes on the block it's written after, at the level its `>`
+  // markers and indentation put it, as kramdown places a block IAL. markdown-it
+  // drops a line's indentation before plugins see it, so markdown-it-attrs gives
+  // the line to the outermost block that ends with the paragraph; its author
+  // describes the indentation rule as the one they wanted (markdown-it-attrs#32).
+  const OWN_LINE: Array<[string, string, string, string]> = [
+    [
+      "in a blockquote, the paragraph",
+      "> quoted\n> {.note}",
+      '<blockquote><p class="note">quoted</p></blockquote>',
+      '<blockquote class="note"><p>quoted</p></blockquote>',
+    ],
+    [
+      "in the outer of two blockquotes, the inner",
+      "> > nested\n> {.inner}",
+      '<blockquote><blockquote class="inner"><p>nested</p></blockquote></blockquote>',
+      '<blockquote class="inner"><blockquote><p>nested</p></blockquote></blockquote>',
+    ],
+    [
+      "in a tight list item, the item",
+      "- a\n  {.x}",
+      '<ul><li class="x">a</li></ul>',
+      '<ul class="x"><li>a</li></ul>',
+    ],
+    [
+      "in a loose list item, the paragraph",
+      "- a\n\n  para\n  {.x}",
+      '<ul><li><p>a</p><p class="x">para</p></li></ul>',
+      '<ul class="x"><li><p>a</p><p>para</p></li></ul>',
+    ],
+    [
+      "in a blockquote in a list item, the paragraph",
+      "- a\n  > q\n  > {.x}",
+      '<ul><li>a\n<blockquote><p class="x">q</p></blockquote></li></ul>',
+      '<ul class="x"><li>a\n<blockquote><p>q</p></blockquote></li></ul>',
+    ],
+  ];
+
+  for (const [name, md, ours, theirs] of OWN_LINE) {
+    test(`block: a line of its own ${name}, unlike the reference`, () => {
+      expect(satteriHtml(md)).toBe(ours);
+      expect(referenceHtml(md)).toBe(theirs);
+    });
+  }
 
   // A paragraph of attributes alone goes on a thematic break before it, as on a
   // list or table; markdown-it-attrs keeps it as an empty paragraph there.

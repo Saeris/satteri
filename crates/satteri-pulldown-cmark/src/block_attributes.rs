@@ -108,41 +108,94 @@ impl<'input> ParserInner<'input> {
                 self.tree[ix].child = None;
                 self.add_block_attributes(ix, attributes);
             }
-            Lead::Text => {
-                // On the item's own line, as in `- item {.x}`.
-                let on_item = matches!(parent_body, Some(ItemBody::ListItem(..)))
-                    && parent.is_some_and(|item| self.tree[item].child == Some(ix));
-                if may_end_inline_element(self.text, chain_start) {
-                    self.trailing_attributes
-                        .insert(ix, (open, attributes, on_item));
-                } else {
-                    self.cut_children(ix, open);
-                    let target = match parent {
-                        Some(item) if on_item => item,
-                        _ => ix,
-                    };
-                    self.add_block_attributes(target, attributes);
-                }
-            }
+            Lead::Text => self.line_end_attributes(ix, parent, open, chain_start, attributes),
             Lead::SoftBreak(_) | Lead::HardBreak => {
-                // A line of its own goes on the list the item is in, or the
-                // blockquote the paragraph is in.
-                let target = match parent_body {
-                    Some(ItemBody::ListItem(..)) if ancestors.len() >= 2 => {
-                        ancestors[ancestors.len() - 2]
-                    }
-                    Some(ItemBody::BlockQuote(_)) => parent.unwrap_or(ix),
-                    _ => ix,
-                };
+                let target = self.own_line_target(ix, ancestors, open);
                 let cut = match lead {
                     Lead::SoftBreak(soft_break) => self.tree[soft_break].item.start,
                     _ => open,
                 };
                 self.cut_children(ix, cut);
                 self.add_block_attributes(target, attributes);
+                // Then a block ending the line before it, as in `- item {.x}`.
+                if let Some((open, chain_start, attributes, Lead::Text)) =
+                    self.trailing_attribute_block(ix)
+                {
+                    self.line_end_attributes(ix, parent, open, chain_start, attributes);
+                }
             }
         }
         false
+    }
+
+    /// A block ending a line of text in the paragraph `ix` goes on the
+    /// paragraph, or on its list item from the item's own line, as in
+    /// `- item {.x}`.
+    fn line_end_attributes(
+        &mut self,
+        ix: TreeIndex,
+        parent: Option<TreeIndex>,
+        open: usize,
+        chain_start: usize,
+        attributes: HeadingAttributes<'input>,
+    ) {
+        let on_item = parent.is_some_and(|item| {
+            matches!(self.tree[item].item.body, ItemBody::ListItem(..))
+                && self.tree[item].child == Some(ix)
+        });
+        if may_end_inline_element(self.text, chain_start) {
+            self.trailing_attributes
+                .insert(ix, (open, attributes, on_item));
+        } else {
+            self.cut_children(ix, open);
+            let target = match parent {
+                Some(item) if on_item => item,
+                _ => ix,
+            };
+            self.add_block_attributes(target, attributes);
+        }
+    }
+
+    /// Where a block on a line of its own, opening at `open`, goes: on the
+    /// block it's written after, at the level the line's `>` markers and
+    /// indentation put it, as kramdown places a block IAL. That's the paragraph
+    /// (its list item, in a tight list), or, for a line lazily written outside
+    /// some of the blockquotes and list items around the paragraph, the
+    /// outermost of those it leaves (a list item's list).
+    fn own_line_target(&self, ix: TreeIndex, ancestors: &[TreeIndex], open: usize) -> TreeIndex {
+        let text = self.text;
+        let line_start = |offset: usize| text[..offset].rfind('\n').map_or(0, |i| i + 1);
+        let prefix = &text[line_start(open)..open];
+        let markers = prefix.bytes().filter(|&b| b == b'>').count();
+        let mut quotes = 0;
+        for (i, &container) in ancestors.iter().enumerate() {
+            match self.tree[container].item.body {
+                ItemBody::BlockQuote(_) => {
+                    quotes += 1;
+                    if markers < quotes {
+                        return container;
+                    }
+                }
+                ItemBody::ListItem(..) => {
+                    let content = self.tree[container]
+                        .child
+                        .map_or(self.tree[container].item.start, |c| self.tree[c].item.start);
+                    if prefix.len() < content - line_start(content) {
+                        return if i > 0 { ancestors[i - 1] } else { container };
+                    }
+                }
+                _ => {}
+            }
+        }
+        match ancestors.last() {
+            Some(&item)
+                if matches!(self.tree[ix].item.body, ItemBody::TightParagraph)
+                    && matches!(self.tree[item].item.body, ItemBody::ListItem(..)) =>
+            {
+                item
+            }
+            _ => ix,
+        }
     }
 
     /// Whether the line before the one holding `offset` is blank, container
