@@ -42,6 +42,7 @@ impl<'input> ParserInner<'input> {
                         continue;
                     }
                     ItemBody::TableCell => self.cell_attributes(ix),
+                    ItemBody::Heading(_, None) => self.heading_attributes(ix),
                     ItemBody::BlockQuote(_)
                     | ItemBody::List(..)
                     | ItemBody::ListItem(..)
@@ -111,7 +112,7 @@ impl<'input> ParserInner<'input> {
                 // On the item's own line, as in `- item {.x}`.
                 let on_item = matches!(parent_body, Some(ItemBody::ListItem(..)))
                     && parent.is_some_and(|item| self.tree[item].child == Some(ix));
-                if self.may_end_inline_element(chain_start) {
+                if may_end_inline_element(self.text, chain_start) {
                     self.trailing_attributes
                         .insert(ix, (open, attributes, on_item));
                 } else {
@@ -160,7 +161,7 @@ impl<'input> ParserInner<'input> {
     fn cell_attributes(&mut self, ix: TreeIndex) {
         if let Some((open, chain_start, attributes, Lead::Text)) = self.trailing_attribute_block(ix)
         {
-            if self.may_end_inline_element(chain_start) {
+            if may_end_inline_element(self.text, chain_start) {
                 self.trailing_attributes
                     .insert(ix, (open, attributes, false));
             } else {
@@ -170,16 +171,16 @@ impl<'input> ParserInner<'input> {
         }
     }
 
-    /// Whether the character before a block at `open` can close an inline
-    /// element (`*em*{.x}`, `[a](/u){.x}`), whose own rule then reads the block
-    /// first; inline markup isn't resolved yet, so this is decided as the
-    /// paragraph is built (see `trailing_attributes`).
-    fn may_end_inline_element(&self, open: usize) -> bool {
-        open > 0
-            && matches!(
-                self.text.as_bytes()[open - 1],
-                b'*' | b'_' | b'~' | b'`' | b')' | b']' | b'>' | b'$'
-            )
+    /// A `{...}` the first pass left on a heading because an inline element
+    /// may end right before it (`# Title [link](/u){.x}`): it goes on the
+    /// heading as the heading is built, if that element doesn't take it.
+    fn heading_attributes(&mut self, ix: TreeIndex) {
+        if let Some((open, chain_start, attributes, Lead::Text)) = self.trailing_attribute_block(ix)
+            && may_end_inline_element(self.text, chain_start)
+        {
+            self.trailing_attributes
+                .insert(ix, (open, attributes, false));
+        }
     }
 
     /// The attribute block ending the inline content of `ix`, its opening
@@ -209,16 +210,7 @@ impl<'input> ParserInner<'input> {
         // Of several blocks that follow one another (`{.a}{.b}`), only the last
         // goes on the block, the rest staying text; but an inline element before
         // the first reads them all, so what precedes the first decides.
-        let mut chain_start = open;
-        while chain_start > 0
-            && text.as_bytes()[chain_start - 1] == b'}'
-            && let Some(earlier) = text[..chain_start].rfind('{')
-            && scan_inline_attribute_block(&text.as_bytes()[earlier..])
-                == Some(chain_start - earlier)
-            && parse_inside_attribute_block(&text[earlier + 1..chain_start - 1]).is_some()
-        {
-            chain_start = earlier;
-        }
+        let chain_start = attribute_chain_start(text, open);
 
         let first_in_block = children
             .iter()
@@ -309,4 +301,31 @@ impl<'input> ParserInner<'input> {
             }
         }
     }
+}
+
+/// Whether the character before a block at `open` can close an inline element
+/// (`*em*{.x}`, `[a](/u){.x}`), whose own rule then reads the block first;
+/// inline markup isn't resolved yet, so this is decided as the paragraph,
+/// cell or heading is built (see `trailing_attributes`).
+pub(crate) fn may_end_inline_element(text: &str, open: usize) -> bool {
+    open > 0
+        && matches!(
+            text.as_bytes()[open - 1],
+            b'*' | b'_' | b'~' | b'`' | b')' | b']' | b'>' | b'$'
+        )
+}
+
+/// Where the run of blocks that follow one another (`{.a}{.b}`) and end with
+/// the block at `open` starts.
+pub(crate) fn attribute_chain_start(text: &str, open: usize) -> usize {
+    let mut chain_start = open;
+    while chain_start > 0
+        && text.as_bytes()[chain_start - 1] == b'}'
+        && let Some(earlier) = text[..chain_start].rfind('{')
+        && scan_inline_attribute_block(&text.as_bytes()[earlier..]) == Some(chain_start - earlier)
+        && parse_inside_attribute_block(&text[earlier + 1..chain_start - 1]).is_some()
+    {
+        chain_start = earlier;
+    }
+    chain_start
 }

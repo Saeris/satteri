@@ -14,6 +14,7 @@ use satteri_arena::line_ending_iter;
 use satteri_arena::mdx_types::Location;
 use unicase::UniCase;
 
+use crate::block_attributes::{attribute_chain_start, may_end_inline_element};
 use crate::linklabel::{LinkLabel, scan_link_label_rest};
 #[cfg(feature = "mdx")]
 use crate::mdx::*;
@@ -4185,6 +4186,16 @@ impl<'a, 'b> FirstPass<'a, 'b> {
         let tail_has_content = bytes[block_close..header_end]
             .iter()
             .any(|&b| !matches!(b, b' ' | b'\t' | b'\n' | b'\r'));
+        // With attributes on inline elements, one ending the heading
+        // (`# Title **b**{.x}`) reads the block first, so it's left for the
+        // block pass to give the heading if that element doesn't take it.
+        if self.options.contains(Options::ENABLE_ATTRIBUTES)
+            && !self.options.contains(Options::ENABLE_MDX)
+            && !tail_has_content
+            && may_end_inline_element(self.text, attribute_chain_start(self.text, block_open))
+        {
+            return None;
+        }
         Some(HeadingAttrBlock {
             attrs,
             block_open,

@@ -43,6 +43,10 @@ describe("attributes: conformance vs markdown-it-attrs", () => {
     ],
     ["inline: strikethrough", "~~gone~~{.x}"],
     ["inline: nested elements", "**a *b*{.in}**{.out}"],
+    [
+      "inline: an element ending a heading takes the block",
+      "# Title **b**{.x}\n\n## See [the guide](/g){.y}",
+    ],
     ["inline: blocks that follow one another merge", "*em*{.a}{#i}{.b k=v}"],
     ["inline: markup characters inside a block", "*em*{.a_b}"],
     ["inline: a block after a space or plain text stays text", "*em* {.a} text{.b} more"],

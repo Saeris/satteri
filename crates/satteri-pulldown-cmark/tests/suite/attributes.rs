@@ -168,6 +168,35 @@ fn attributes_test_11() {
 
 #[test]
 fn attributes_test_12() {
+    let original = r##"# Title **b**{.x}
+
+See [the guide](/g){.y}
+===
+
+- item *em*{.z}
+
+| a `c`{.w} |
+| - |
+"##;
+    let expected = r##"<h1>Title <strong class="x">b</strong></h1>
+<h1>See <a href="/g" class="y">the guide</a></h1>
+<ul>
+<li>item <em class="z">em</em></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>a <code class="w">c</code></th>
+</tr>
+</thead>
+</table>
+"##;
+
+    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+}
+
+#[test]
+fn attributes_test_13() {
     let original = r##"*em*{.a_b}
 "##;
     let expected = r##"<p><em class="a_b">em</em></p>
@@ -177,7 +206,7 @@ fn attributes_test_12() {
 }
 
 #[test]
-fn attributes_test_13() {
+fn attributes_test_14() {
     let original = r##"*em* {.a} text{.b} *em*\{.c} *em*{} *em*{.d
 "##;
     let expected = r##"<p><em>em</em> {.a} text{.b} <em>em</em>{.c} <em>em</em>{} <em>em</em>{.d</p>
@@ -187,7 +216,7 @@ fn attributes_test_13() {
 }
 
 #[test]
-fn attributes_test_14() {
+fn attributes_test_15() {
     let original = r##"A paragraph. {.intro}
 
 Another
@@ -201,7 +230,7 @@ Another
 }
 
 #[test]
-fn attributes_test_15() {
+fn attributes_test_16() {
     let original = r##"line\
 {.x}
 "##;
@@ -213,7 +242,7 @@ fn attributes_test_15() {
 }
 
 #[test]
-fn attributes_test_16() {
+fn attributes_test_17() {
     let original = r##"- item {.red}
 - item
 "##;
@@ -227,7 +256,7 @@ fn attributes_test_16() {
 }
 
 #[test]
-fn attributes_test_17() {
+fn attributes_test_18() {
     let original = r##"- a
 - b
 {.my-list}
@@ -242,7 +271,7 @@ fn attributes_test_17() {
 }
 
 #[test]
-fn attributes_test_18() {
+fn attributes_test_19() {
     let original = r##"- parent
   - child
   {.inner}
@@ -260,7 +289,7 @@ fn attributes_test_18() {
 }
 
 #[test]
-fn attributes_test_19() {
+fn attributes_test_20() {
     let original = r##"> quoted
 > {.note}
 "##;
@@ -273,7 +302,7 @@ fn attributes_test_19() {
 }
 
 #[test]
-fn attributes_test_20() {
+fn attributes_test_21() {
     let original = r##"- a
 - b
 
@@ -289,7 +318,7 @@ fn attributes_test_20() {
 }
 
 #[test]
-fn attributes_test_21() {
+fn attributes_test_22() {
     let original = r##"---
 {.divider}
 "##;
@@ -300,7 +329,7 @@ fn attributes_test_21() {
 }
 
 #[test]
-fn attributes_test_22() {
+fn attributes_test_23() {
     let original = r##"| Head {.h} |
 | --- |
 | cell {.c} |
@@ -325,7 +354,7 @@ fn attributes_test_22() {
 }
 
 #[test]
-fn attributes_test_23() {
+fn attributes_test_24() {
     let original = r##"{.alone}
 "##;
     let expected = r##"<p class="alone"></p>
@@ -335,7 +364,7 @@ fn attributes_test_23() {
 }
 
 #[test]
-fn attributes_test_24() {
+fn attributes_test_25() {
     let original = r##"para
 {.x}
 more
@@ -352,7 +381,7 @@ more</p>
 }
 
 #[test]
-fn attributes_test_25() {
+fn attributes_test_26() {
     let original = r##"text{.a}{.b}
 "##;
     let expected = r##"<p class="b">text{.a}</p>
