@@ -170,6 +170,8 @@ The id and classes appear on the rendered heading, producing the following HTML:
 <h3 id="intro" data-level="2" hidden="">Note</h3>
 ```
 
+As in Pandoc, a block counts only if everything in it is an attribute: an id, a class, or a key that names one (letters, digits, `-`, `_`, `:`, `.` and `@`, as in `data-x`, `x-on:click` or `@click`). Anything else keeps the whole block as text, so other `{...}` syntax, such as `{base|reading}` ruby annotations, is left alone.
+
 Wrap a value in `"` or `'` quotes when it needs to contain spaces:
 
 ```markdown

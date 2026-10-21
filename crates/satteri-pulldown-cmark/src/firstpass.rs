@@ -6966,6 +6966,9 @@ fn parse_inside_attribute_block(inside_attr_block: &str) -> Option<HeadingAttrib
             } else if first_byte == b'.' {
                 attributes.add_class(attr[1..].into());
             } else if let Some((key, value)) = attr.split_once('=') {
+                if !is_attribute_name(key) {
+                    return None;
+                }
                 // `id=`/`class=` fold into the `#`/`.` channels so a heading
                 // mixing shorthand and explicit forms emits a single id and
                 // one merged class list instead of duplicate attributes.
@@ -6975,8 +6978,12 @@ fn parse_inside_attribute_block(inside_attr_block: &str) -> Option<HeadingAttrib
                     "class" => attributes.add_class(value.into()),
                     _ => attributes.set_other(key.into(), Some(value.into())),
                 }
-            } else {
+            } else if is_attribute_name(attr) {
                 attributes.set_other(attr.into(), None);
+            } else {
+                // As in Pandoc, a block with anything that isn't an attribute
+                // stays text, so other `{...}` syntax (`{base|ruby}`) is left be.
+                return None;
             }
         }
     }
@@ -6985,6 +6992,17 @@ fn parse_inside_attribute_block(inside_attr_block: &str) -> Option<HeadingAttrib
         return None;
     }
     Some(attributes)
+}
+
+/// Whether `name` can name an attribute: a letter, `_`, `:` or `@`, then
+/// letters, digits, `_`, `:`, `.`, `@` or `-`. This covers `data-*`, `aria-*`
+/// and framework names such as `x-on:click.prevent` or `@click`.
+fn is_attribute_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    chars
+        .next()
+        .is_some_and(|c| c.is_alphabetic() || matches!(c, '_' | ':' | '@'))
+        && chars.all(|c| c.is_alphanumeric() || matches!(c, '_' | ':' | '.' | '@' | '-'))
 }
 
 /// Strips a matching pair of surrounding `"` or `'` from an attribute value.
