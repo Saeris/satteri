@@ -579,6 +579,16 @@ impl<'input> ParserInner<'input> {
         let text = self.text;
         let mut attributes: Option<HeadingAttributes<'input>> = None;
         let mut block_end = self.tree[ix].item.end;
+        // A collapsed reference's item ends before its `[]`, which the arena build adds back.
+        if let ItemBody::Link(link_ix) | ItemBody::Image(link_ix) = self.tree[ix].item.body
+            && matches!(
+                self.allocs[link_ix].0,
+                LinkType::Collapsed | LinkType::CollapsedUnknown
+            )
+            && text[block_end..].starts_with("[]")
+        {
+            block_end += 2;
+        }
         // Blocks are read only from the text that still follows the element, as
         // the block pass may have taken a trailing one for the paragraph.
         let mut text_end = block_end;

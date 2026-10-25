@@ -442,3 +442,15 @@ x
 
     test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
 }
+
+#[test]
+fn attributes_test_30() {
+    let original = r##"[ref][]{.a} ![ref][]{.b}
+
+[ref]: /u
+"##;
+    let expected = r##"<p><a href="/u" class="a">ref</a> <img src="/u" alt="ref" class="b"></p>
+"##;
+
+    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+}

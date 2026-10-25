@@ -395,3 +395,13 @@ x
 <pre><code class="language-js">x
 </code></pre>
 ````````````````````````````````
+
+A collapsed reference takes the block after its `[]`:
+
+```````````````````````````````` example
+[ref][]{.a} ![ref][]{.b}
+
+[ref]: /u
+.
+<p><a href="/u" class="a">ref</a> <img src="/u" alt="ref" class="b"></p>
+````````````````````````````````
