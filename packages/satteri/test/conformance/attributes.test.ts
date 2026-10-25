@@ -4,7 +4,8 @@ import markdownItAttrs from "markdown-it-attrs";
 import { markdownToHtml } from "../../src/index.js";
 
 // markdown-it-attrs is the reference: remark has no maintained attributes plugin.
-const reference = new MarkdownIt().use(markdownItAttrs);
+// Its default moves fence attributes to `<pre>`; Sätteri keeps them on `<code>`, as mdast-util-to-hast does.
+const reference = new MarkdownIt().use(markdownItAttrs, { fenceAttrsOnPre: false });
 
 // markdown-it renders strikethrough as `<s>` where remark and Sätteri use `<del>`,
 // whatever the attributes.
