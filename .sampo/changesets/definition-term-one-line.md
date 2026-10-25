@@ -1,6 +1,6 @@
 ---
-cargo/satteri-pulldown-cmark: minor
-npm/satteri: minor
+cargo/satteri-pulldown-cmark: patch
+npm/satteri: patch
 ---
 
-A definition list term now fits on one line, as in pandoc: a `:` marker after a paragraph of two or more lines continues that paragraph, or after a blank line starts one of its own, instead of making each line a term.
+Changed definition list terms to fit on one line, so a `:` marker after a paragraph of several lines no longer makes each line a term.
