@@ -120,3 +120,16 @@ x
 
     test_markdown_html(original, expected, 16777216, false, false, false, false, false, false);
 }
+
+#[test]
+fn attributes_test_8() {
+    let original = r##"```js \{.a\}
+x
+```
+"##;
+    let expected = r##"<pre><code class="language-js">x
+</code></pre>
+"##;
+
+    test_markdown_html(original, expected, 16777216, false, false, false, false, false, false);
+}

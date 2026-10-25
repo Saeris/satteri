@@ -111,3 +111,14 @@ x
 <pre><code class="language-js">x
 </code></pre>
 ````````````````````````````````
+
+An escaped brace keeps a fence's trailing block in the info string:
+
+```````````````````````````````` example
+```js \{.a\}
+x
+```
+.
+<pre><code class="language-js">x
+</code></pre>
+````````````````````````````````

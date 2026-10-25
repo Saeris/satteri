@@ -1094,7 +1094,9 @@ pub(crate) fn parse_document<'a>(
                         let mut info_str = info_cow.as_ref();
                         // A trailing `{...}` holds the block's attributes, as in
                         // markdown-it-attrs; the language and meta are what precedes it.
-                        let attributes = if options.contains(Options::ENABLE_ATTRIBUTES) {
+                        let attributes = if options.contains(Options::ENABLE_ATTRIBUTES)
+                            && !fence_attribute_block_escaped(&source[item.start..])
+                        {
                             split_fence_attributes(info_str).map(|(before, attributes)| {
                                 info_str = before;
                                 attributes
@@ -2715,6 +2717,25 @@ fn split_fence_attributes(info: &str) -> Option<(&str, HeadingAttributes<'_>)> {
     }
     let attributes = parse_inside_attribute_block(inside)?;
     Some((info[..open].trim_end(), attributes))
+}
+
+/// An escaped brace keeps a fence's trailing `{...}` text, as an escape does elsewhere.
+fn fence_attribute_block_escaped(fence: &str) -> bool {
+    let line = &fence[..fence.find(['\n', '\r']).unwrap_or(fence.len())];
+    let bytes = line.trim_end().as_bytes();
+    let escaped = |ix: usize| {
+        bytes[..ix]
+            .iter()
+            .rev()
+            .take_while(|&&b| b == b'\\')
+            .count()
+            % 2
+            == 1
+    };
+    match (bytes.last(), bytes.iter().rposition(|&b| b == b'{')) {
+        (Some(b'}'), Some(open)) => escaped(bytes.len() - 1) || escaped(open),
+        _ => false,
+    }
 }
 
 /// A code block's attributes as its `<code>` gets them. The language is written
