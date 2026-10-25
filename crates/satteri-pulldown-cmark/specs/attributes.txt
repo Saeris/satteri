@@ -384,3 +384,14 @@ text{.a}{.b}
 .
 <p class="b">text{.a}</p>
 ````````````````````````````````
+
+An escaped brace keeps a fence's trailing block in the info string:
+
+```````````````````````````````` example
+```js \{.a\}
+x
+```
+.
+<pre><code class="language-js">x
+</code></pre>
+````````````````````````````````
