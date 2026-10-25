@@ -1,5 +1,5 @@
 ---
-cargo/satteri-pulldown-cmark: minor
+cargo/satteri-pulldown-cmark: patch
 ---
 
-Added the tilde (`~`) definition marker to definition lists, as in Pandoc, alongside the colon. A lone tilde followed by whitespace starts a definition; tilde code fences are unaffected.
+Added the tilde (`~`) definition marker to definition lists, alongside the colon.
