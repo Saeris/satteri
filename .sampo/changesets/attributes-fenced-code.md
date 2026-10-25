@@ -1,6 +1,6 @@
 ---
-cargo/satteri-pulldown-cmark: minor
-npm/satteri: minor
+cargo/satteri-pulldown-cmark: patch
+npm/satteri: patch
 ---
 
-Added the `attributes` feature (`Options::ENABLE_ATTRIBUTES`), which reads curly-brace attributes on fenced code blocks (` ```js {.class #id} `) and applies them to the `<code>`, as markdown-it-attrs does. It also enables heading attributes.
+Added the `attributes` feature, which reads `{...}` attributes on fenced code blocks (` ```js {.class #id} `) as well as on headings.
