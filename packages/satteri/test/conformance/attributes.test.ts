@@ -47,6 +47,7 @@ describe("attributes: conformance vs markdown-it-attrs", () => {
     ["inline: markup characters inside a block", "*em*{.a_b}"],
     ["inline: a block after a space or plain text stays text", "*em* {.a} text{.b} more"],
     ["inline: an escaped, empty or unclosed block stays text", "*em*\\{.c} *em*{} *em*{.d"],
+    ["inline: collapsed references", "[ref][]{.a} ![ref][]{.b}\n\n[ref]: /u"],
   ];
 
   for (const [name, md] of CASES) {
