@@ -1,6 +1,6 @@
 ---
-cargo/satteri-pulldown-cmark: minor
-npm/satteri: minor
+cargo/satteri-pulldown-cmark: patch
+npm/satteri: patch
 ---
 
-Added inline elements to the `attributes` feature: a `{...}` written right after emphasis, strong, a code span, a link, an image or strikethrough (`*em*{.class}`) applies to that element, as markdown-it-attrs does, and blocks that follow one another merge.
+Added inline elements to the `attributes` feature: a `{...}` right after emphasis, strong, a code span, a link, an image or strikethrough (`*em*{.class}`) applies to it.
