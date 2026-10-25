@@ -165,3 +165,14 @@ unclosed block stay text:
 .
 <p><em>em</em> {.a} text{.b} <em>em</em>{.c} <em>em</em>{} <em>em</em>{.d</p>
 ````````````````````````````````
+
+An escaped brace keeps a fence's trailing block in the info string:
+
+```````````````````````````````` example
+```js \{.a\}
+x
+```
+.
+<pre><code class="language-js">x
+</code></pre>
+````````````````````````````````
