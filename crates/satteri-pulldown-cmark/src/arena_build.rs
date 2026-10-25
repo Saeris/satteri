@@ -3,6 +3,7 @@
 
 use alloc::borrow::Cow;
 
+use rustc_hash::FxHashMap;
 use satteri_arena::{
     Arena, DocumentBuilder, LineIndex, Mdast, NodePosition, StringRef, line_ending_iter,
 };
@@ -152,6 +153,7 @@ pub(crate) fn parse_document<'a>(
     if options.contains(Options::ENABLE_ATTRIBUTES) {
         inner.collect_block_attributes();
     }
+    let mut applied_attributes: FxHashMap<u32, HeadingAttributes<'_>> = FxHashMap::default();
     let mut callbacks = DefaultParserCallbacks;
     let mut document = storage.map_or_else(
         || SourceDocument::borrowed(source, inner.tree.semantic_capacity_hint()),
@@ -811,28 +813,38 @@ pub(crate) fn parse_document<'a>(
                     item = inner.tree[cur_ix].item;
                 }
                 // A `{...}` that `collect_block_attributes` deferred goes on its
-                // paragraph or cell (or the list item) if no inline element took it.
+                // block (or the list item) if no inline element took it.
                 if !inner.trailing_attributes.is_empty()
                     && matches!(item.body, ItemBody::Text { .. })
                     && let Some(block) = inner.tree.peek_up()
-                    && inner
-                        .trailing_attributes
-                        .get(&block)
-                        .is_some_and(|&(open, ..)| item.start <= open && open < item.end)
-                    && let Some((open, attributes, on_item)) =
+                    && let Some(&(open, ..)) = inner.trailing_attributes.get(&block)
+                    && text_run_reaches(&inner.tree, cur_ix, open)
+                    && let Some((open, attributes, item_ix)) =
                         inner.trailing_attributes.remove(&block)
                 {
                     inner.cut_children(block, open);
-                    item = inner.tree[cur_ix].item;
                     let block_id = builder.current_node_id();
-                    let target_id = if on_item {
-                        builder.arena_ref().get_node(block_id).parent
-                    } else {
-                        block_id
+                    let (target_id, own_class) = match item_ix {
+                        Some(item_ix) => (
+                            builder.arena_ref().get_node(block_id).parent,
+                            inner.task_list_class(item_ix),
+                        ),
+                        None => (block_id, None),
                     };
-                    if let Some(json) = encode_h_properties(&attributes) {
-                        builder.arena_mut().set_node_data(target_id, json);
+                    apply_attributes(
+                        &mut builder,
+                        &mut applied_attributes,
+                        target_id,
+                        attributes,
+                        own_class,
+                    );
+                    if inner.tree[cur_ix].item.start >= open {
+                        // The cut left this item and the ones after it out of the block.
+                        inner.tree[cur_ix].next = None;
+                        inner.tree.next_sibling(cur_ix);
+                        continue;
                     }
+                    item = inner.tree[cur_ix].item;
                 }
                 let start = item.start as u32;
                 let end = item.end as u32;
@@ -1014,27 +1026,31 @@ pub(crate) fn parse_document<'a>(
 
                 // Attributes written right after an inline element, or given to a
                 // block, go on the node the item opens, which is the next one built.
-                let inline_attributes = if options.contains(Options::ENABLE_ATTRIBUTES)
-                    && matches!(
-                        item.body,
-                        ItemBody::Emphasis
-                            | ItemBody::Strong
-                            | ItemBody::SourceStrong
-                            | ItemBody::Strikethrough
-                            | ItemBody::Code(_)
-                            | ItemBody::SourceCode(_)
-                            | ItemBody::Link(_)
-                            | ItemBody::LiteralLink { .. }
-                            | ItemBody::Image(_)
-                    ) {
+                let inline_attributes = if !options.contains(Options::ENABLE_ATTRIBUTES) {
+                    None
+                } else if matches!(
+                    item.body,
+                    ItemBody::Emphasis
+                        | ItemBody::Strong
+                        | ItemBody::SourceStrong
+                        | ItemBody::Strikethrough
+                        | ItemBody::Code(_)
+                        | ItemBody::SourceCode(_)
+                        | ItemBody::Link(_)
+                        | ItemBody::LiteralLink { .. }
+                        | ItemBody::Image(_)
+                ) {
                     inner
                         .take_attribute_block_after(cur_ix)
-                        .map(|attributes| (builder.arena_ref().len() as u32, attributes))
+                        .map(|attributes| (builder.arena_ref().len() as u32, attributes, None))
                 } else {
-                    inner
-                        .block_attributes
-                        .remove(&cur_ix)
-                        .map(|attributes| (builder.arena_ref().len() as u32, attributes))
+                    inner.block_attributes.remove(&cur_ix).map(|attributes| {
+                        (
+                            builder.arena_ref().len() as u32,
+                            attributes,
+                            inner.task_list_class(cur_ix),
+                        )
+                    })
                 };
 
                 // Map ItemBody to arena node.
@@ -2176,10 +2192,14 @@ pub(crate) fn parse_document<'a>(
                     }
                 }
 
-                if let Some((node_id, attributes)) = inline_attributes
-                    && let Some(json) = encode_h_properties(&attributes)
-                {
-                    builder.arena_mut().set_node_data(node_id, json);
+                if let Some((node_id, attributes, own_class)) = inline_attributes {
+                    apply_attributes(
+                        &mut builder,
+                        &mut applied_attributes,
+                        node_id,
+                        attributes,
+                        own_class,
+                    );
                 }
             }
         }
@@ -2820,6 +2840,55 @@ fn code_attributes<'a>(attributes: HeadingAttributes<'a>, lang: &str) -> Heading
     classes.push(format!("language-{language}").into());
     entries.insert(0, HeadingAttribute::Classes(classes));
     HeadingAttributes { entries }
+}
+
+/// Whether the text built from `from` on, before any inline element, reaches `open`.
+fn text_run_reaches(tree: &Tree<Item>, from: TreeIndex, open: usize) -> bool {
+    let mut cur = Some(from);
+    while let Some(ix) = cur {
+        let item = &tree[ix].item;
+        if item.start > open || !matches!(item.body, ItemBody::Text { .. } | ItemBody::SoftBreak) {
+            return false;
+        }
+        if open < item.end {
+            return true;
+        }
+        cur = tree[ix].next;
+    }
+    false
+}
+
+/// `hProperties` replaces the class GFM gives a task item or its list, so `own_class` joins attribute classes.
+fn apply_attributes<'a>(
+    builder: &mut DocumentBuilder<'_, Mdast>,
+    applied: &mut FxHashMap<u32, HeadingAttributes<'a>>,
+    node_id: u32,
+    attributes: HeadingAttributes<'a>,
+    own_class: Option<&'static str>,
+) {
+    let attributes = match applied.remove(&node_id) {
+        Some(mut earlier) => {
+            earlier.merge(attributes);
+            earlier
+        }
+        None => attributes,
+    };
+    let has_classes = attributes
+        .entries
+        .iter()
+        .any(|entry| matches!(entry, HeadingAttribute::Classes(_)));
+    let encoded = match own_class {
+        Some(class) if has_classes => {
+            let mut with_class = attributes.clone();
+            with_class.add_class(class.into());
+            encode_h_properties(&with_class)
+        }
+        _ => encode_h_properties(&attributes),
+    };
+    if let Some(json) = encoded {
+        builder.arena_mut().set_node_data(node_id, json);
+    }
+    applied.insert(node_id, attributes);
 }
 
 /// JSON is hand-built to keep serde_json out of this crate's runtime deps

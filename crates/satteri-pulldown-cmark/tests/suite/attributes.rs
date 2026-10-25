@@ -10,7 +10,7 @@ fn attributes_test_1() {
     let expected = r##"<h1 class="title" id="top">Heading</h1>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -23,7 +23,7 @@ x
 </code></pre>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -42,7 +42,7 @@ x
 </code></pre>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -55,7 +55,7 @@ x
 </code></pre>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -74,7 +74,7 @@ x
 </code></pre>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -93,7 +93,7 @@ x
 </code></pre>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -118,7 +118,7 @@ x
 </code></pre>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -128,7 +128,7 @@ fn attributes_test_8() {
     let expected = r##"<p><em class="a">em</em> <strong id="b">strong</strong> <code c="d">code</code></p>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -140,7 +140,7 @@ fn attributes_test_9() {
     let expected = r##"<p><a href="/u" class="a">link</a> <img src="/i.png" alt="alt" class="b"> <a href="/r" id="c">ref</a></p>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -150,7 +150,7 @@ fn attributes_test_10() {
     let expected = r##"<p><del class="x">gone</del></p>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -163,7 +163,7 @@ fn attributes_test_11() {
 <p><em class="a b" id="i" k="v">em</em></p>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -192,7 +192,7 @@ See [the guide](/g){.y}
 </table>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -202,7 +202,7 @@ fn attributes_test_13() {
     let expected = r##"<p><em class="a_b">em</em></p>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -212,7 +212,7 @@ fn attributes_test_14() {
     let expected = r##"<p><em>em</em> {.a} text{.b} <em>em</em>{.c} <em>em</em>{} <em>em</em>{.d</p>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -226,7 +226,7 @@ Another
 <p id="second">Another</p>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -238,7 +238,7 @@ fn attributes_test_16() {
 </p>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -252,7 +252,7 @@ fn attributes_test_17() {
 </ul>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -271,7 +271,7 @@ fn attributes_test_18() {
 </ul>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -292,7 +292,7 @@ fn attributes_test_19() {
 </blockquote>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -307,7 +307,7 @@ fn attributes_test_20() {
 </ul>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -325,7 +325,7 @@ fn attributes_test_21() {
 </ul>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -338,7 +338,7 @@ fn attributes_test_22() {
 </ul>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -354,7 +354,7 @@ fn attributes_test_23() {
 </ul>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -365,7 +365,7 @@ fn attributes_test_24() {
     let expected = r##"<hr class="divider">
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -390,7 +390,7 @@ fn attributes_test_25() {
 </table>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -400,7 +400,7 @@ fn attributes_test_26() {
     let expected = r##"<p class="alone"></p>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -417,7 +417,7 @@ more</p>
 <p><img src="x.png" alt="{.cls}" /></p>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -427,7 +427,7 @@ fn attributes_test_28() {
     let expected = r##"<p class="b">text{.a}</p>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -440,7 +440,7 @@ x
 </code></pre>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
 }
 
 #[test]
@@ -452,5 +452,122 @@ fn attributes_test_30() {
     let expected = r##"<p><a href="/u" class="a">ref</a> <img src="/u" alt="ref" class="b"></p>
 "##;
 
-    test_markdown_html(original, expected, 16777226, false, false, false, false, false, false);
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
+}
+
+#[test]
+fn attributes_test_31() {
+    let original = r##"see [brackets]{.a}
+
+foo_{.b}
+
+a <b>bold</b>{.c}
+
+# see [brackets]{.d}
+"##;
+    let expected = r##"<p class="a">see [brackets]</p>
+<p class="b">foo_</p>
+<p class="c">a <b>bold</b></p>
+<h1 class="d">see [brackets]</h1>
+"##;
+
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
+}
+
+#[test]
+fn attributes_test_32() {
+    let original = r##"$x${.m}
+"##;
+    let expected = r##"<p class="m"><code class="language-math math-inline">x</code></p>
+"##;
+
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
+}
+
+#[test]
+fn attributes_test_33() {
+    let original = r##"- item (x){.a}
+  {.b}
+"##;
+    let expected = r##"<ul>
+<li class="b a">item (x)</li>
+</ul>
+"##;
+
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
+}
+
+#[test]
+fn attributes_test_34() {
+    let original = r##"- [ ] task {.a}
+- [x] done
+  {.b}
+"##;
+    let expected = r##"<ul class="contains-task-list">
+<li class="a task-list-item"><input type="checkbox" disabled> task</li>
+<li class="b task-list-item"><input type="checkbox" checked disabled> done</li>
+</ul>
+"##;
+
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
+}
+
+#[test]
+fn attributes_test_35() {
+    let original = r##"- [ ] one
+- [x] two
+{.list}
+"##;
+    let expected = r##"<ul class="list contains-task-list">
+<li class="task-list-item"><input type="checkbox" disabled> one</li>
+<li class="task-list-item"><input type="checkbox" checked disabled> two</li>
+</ul>
+"##;
+
+    test_markdown_html(original, expected, 16778266, false, false, false, false, false, false);
+}
+
+#[test]
+fn attributes_test_36() {
+    let original = r##"Term {.t}
+: tight {.d}
+
+Loose
+:   para one {.p1}
+
+    para two
+"##;
+    let expected = r##"<dl>
+<dt class="t">Term</dt>
+<dd class="d">tight</dd>
+<dt>Loose</dt>
+<dd>
+<p class="p1">para one</p>
+<p>para two</p>
+</dd>
+</dl>
+"##;
+
+    test_markdown_html(original, expected, 16778266, false, false, false, false, true, false);
+}
+
+#[test]
+fn attributes_test_37() {
+    let original = r##"Term
+: def
+  {.own}
+
+Other
+: def
+{.lazy}
+"##;
+    let expected = r##"<dl class="lazy">
+<dt>Term</dt>
+<dd class="own">def</dd>
+<dt>Other</dt>
+<dd>def</dd>
+</dl>
+"##;
+
+    test_markdown_html(original, expected, 16778266, false, false, false, false, true, false);
 }

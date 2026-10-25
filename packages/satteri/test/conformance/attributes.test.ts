@@ -75,6 +75,7 @@ describe("attributes: conformance vs markdown-it-attrs", () => {
     ["block: a block mid-paragraph stays text", "para\n{.x}\nmore"],
     ["block: braces in image alt text", "![{.cls}](x.png)"],
     ["block: an inline element before the block takes it", "![alt](img.png){.img-class}"],
+    ["block: after markup left as text", "see [brackets]{.a}\n\nfoo_{.b}\n\n# see [brackets]{.c}"],
     ["inline: collapsed references", "[ref][]{.a} ![ref][]{.b}\n\n[ref]: /u"],
   ];
 

@@ -328,9 +328,10 @@ pub(crate) struct ParserInner<'input> {
     pub(crate) block_attributes: FxHashMap<TreeIndex, HeadingAttributes<'input>>,
 
     /// A `{...}` ending a paragraph or cell right after a character that may
-    /// close an inline element: its offset, attributes and whether it goes on
-    /// the list item. Applied as the paragraph is built if still there.
-    pub(crate) trailing_attributes: FxHashMap<TreeIndex, (usize, HeadingAttributes<'input>, bool)>,
+    /// close an inline element: its offset, attributes and the list item or
+    /// definition it goes on instead. Applied as the paragraph is built if still there.
+    pub(crate) trailing_attributes:
+        FxHashMap<TreeIndex, (usize, HeadingAttributes<'input>, Option<TreeIndex>)>,
 
     // used by inline passes. store them here for reuse
     inline_stack: InlineStack,

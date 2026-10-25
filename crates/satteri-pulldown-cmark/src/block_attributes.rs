@@ -41,7 +41,9 @@ impl<'input> ParserInner<'input> {
                         cur = self.tree[ix].next;
                         continue;
                     }
-                    ItemBody::TableCell => self.cell_attributes(ix),
+                    ItemBody::TableCell | ItemBody::DefinitionListTitle => {
+                        self.single_line_attributes(ix)
+                    }
                     ItemBody::Heading(_, None) => self.heading_attributes(ix),
                     ItemBody::BlockQuote(_)
                     | ItemBody::List(..)
@@ -51,6 +53,8 @@ impl<'input> ParserInner<'input> {
                     | ItemBody::TableRow
                     | ItemBody::FootnoteDefinition(_)
                     | ItemBody::ContainerDirective(..)
+                    | ItemBody::DefinitionList(_)
+                    | ItemBody::DefinitionListDefinition(..)
                         if self.tree[ix].child.is_some() =>
                     {
                         ancestors.push(ix);
@@ -128,9 +132,7 @@ impl<'input> ParserInner<'input> {
         false
     }
 
-    /// A block ending a line of text in the paragraph `ix` goes on the
-    /// paragraph, or on its list item from the item's own line, as in
-    /// `- item {.x}`.
+    /// Gives a line-ending block to the paragraph `ix`, or to the list item or tight definition it opens.
     fn line_end_attributes(
         &mut self,
         ix: TreeIndex,
@@ -139,29 +141,28 @@ impl<'input> ParserInner<'input> {
         chain_start: usize,
         attributes: HeadingAttributes<'input>,
     ) {
-        let on_item = parent.is_some_and(|item| {
-            matches!(self.tree[item].item.body, ItemBody::ListItem(..))
-                && self.tree[item].child == Some(ix)
+        let item = parent.filter(|&parent| {
+            self.tree[parent].child == Some(ix)
+                && matches!(
+                    self.tree[parent].item.body,
+                    ItemBody::ListItem(..) | ItemBody::DefinitionListDefinition(_, false)
+                )
         });
         if may_end_inline_element(self.text, chain_start) {
             self.trailing_attributes
-                .insert(ix, (open, attributes, on_item));
+                .insert(ix, (open, attributes, item));
         } else {
             self.cut_children(ix, open);
-            let target = match parent {
-                Some(item) if on_item => item,
-                _ => ix,
-            };
-            self.add_block_attributes(target, attributes);
+            self.add_block_attributes(item.unwrap_or(ix), attributes);
         }
     }
 
     /// Where a block on a line of its own, opening at `open`, goes: on the
     /// block it's written after, at the level the line's `>` markers and
     /// indentation put it, as kramdown places a block IAL. That's the paragraph
-    /// (its list item, in a tight list), or, for a line lazily written outside
-    /// some of the blockquotes and list items around the paragraph, the
-    /// outermost of those it leaves (a list item's list).
+    /// (its list item or definition, when tight), or, for a line lazily written
+    /// outside some of the blockquotes, list items and definitions around the
+    /// paragraph, the outermost of those it leaves (a list item's list).
     fn own_line_target(&self, ix: TreeIndex, ancestors: &[TreeIndex], open: usize) -> TreeIndex {
         let text = self.text;
         let line_start = |offset: usize| text[..offset].rfind('\n').map_or(0, |i| i + 1);
@@ -176,10 +177,8 @@ impl<'input> ParserInner<'input> {
                         return container;
                     }
                 }
-                ItemBody::ListItem(..) => {
-                    let content = self.tree[container]
-                        .child
-                        .map_or(self.tree[container].item.start, |c| self.tree[c].item.start);
+                ItemBody::ListItem(..) | ItemBody::DefinitionListDefinition(..) => {
+                    let content = self.content_start(container);
                     if prefix.len() < content - line_start(content) {
                         return if i > 0 { ancestors[i - 1] } else { container };
                     }
@@ -188,13 +187,53 @@ impl<'input> ParserInner<'input> {
             }
         }
         match ancestors.last() {
-            Some(&item)
-                if matches!(self.tree[ix].item.body, ItemBody::TightParagraph)
-                    && matches!(self.tree[item].item.body, ItemBody::ListItem(..)) =>
+            Some(&container)
+                if match self.tree[container].item.body {
+                    ItemBody::ListItem(..) => {
+                        matches!(self.tree[ix].item.body, ItemBody::TightParagraph)
+                    }
+                    ItemBody::DefinitionListDefinition(_, loose) => !loose,
+                    _ => false,
+                } =>
             {
-                item
+                container
             }
             _ => ix,
+        }
+    }
+
+    /// A task item's checkbox sits before its paragraph, so it marks where the content starts.
+    fn content_start(&self, container: TreeIndex) -> usize {
+        self.task_marker(container)
+            .or(self.tree[container].child)
+            .map_or(self.tree[container].item.start, |first| {
+                self.tree[first].item.start
+            })
+    }
+
+    fn task_marker(&self, item: TreeIndex) -> Option<TreeIndex> {
+        let first = self.tree[item].child?;
+        let marker = match self.tree[first].item.body {
+            ItemBody::TaskListMarker(_) => first,
+            _ => self.tree[first].child?,
+        };
+        matches!(self.tree[marker].item.body, ItemBody::TaskListMarker(_)).then_some(marker)
+    }
+
+    pub(crate) fn task_list_class(&self, block: TreeIndex) -> Option<&'static str> {
+        match self.tree[block].item.body {
+            ItemBody::ListItem(..) => self.task_marker(block).map(|_| "task-list-item"),
+            ItemBody::List(..) => {
+                let mut item = self.tree[block].child;
+                while let Some(ix) = item {
+                    if self.task_marker(ix).is_some() {
+                        return Some("contains-task-list");
+                    }
+                    item = self.tree[ix].next;
+                }
+                None
+            }
+            _ => None,
         }
     }
 
@@ -211,12 +250,12 @@ impl<'input> ParserInner<'input> {
         previous.bytes().all(|b| matches!(b, b' ' | b'\t' | b'>'))
     }
 
-    fn cell_attributes(&mut self, ix: TreeIndex) {
+    fn single_line_attributes(&mut self, ix: TreeIndex) {
         if let Some((open, chain_start, attributes, Lead::Text)) = self.trailing_attribute_block(ix)
         {
             if may_end_inline_element(self.text, chain_start) {
                 self.trailing_attributes
-                    .insert(ix, (open, attributes, false));
+                    .insert(ix, (open, attributes, None));
             } else {
                 self.cut_children(ix, open);
                 self.add_block_attributes(ix, attributes);
@@ -232,7 +271,7 @@ impl<'input> ParserInner<'input> {
             && may_end_inline_element(self.text, chain_start)
         {
             self.trailing_attributes
-                .insert(ix, (open, attributes, false));
+                .insert(ix, (open, attributes, None));
         }
     }
 
@@ -285,10 +324,9 @@ impl<'input> ParserInner<'input> {
         } else {
             let before = children[first_in_block - 1];
             match self.tree[before].item.body {
-                ItemBody::Text { .. } => Lead::Text,
                 ItemBody::SoftBreak => Lead::SoftBreak(before),
                 ItemBody::HardBreak(_) => Lead::HardBreak,
-                _ => return None,
+                _ => Lead::Text,
             }
         };
         Some((open, chain_start, attributes, lead))
@@ -364,7 +402,7 @@ pub(crate) fn may_end_inline_element(text: &str, open: usize) -> bool {
     open > 0
         && matches!(
             text.as_bytes()[open - 1],
-            b'*' | b'_' | b'~' | b'`' | b')' | b']' | b'>' | b'$'
+            b'*' | b'_' | b'~' | b'`' | b')' | b']' | b'>'
         )
 }
 

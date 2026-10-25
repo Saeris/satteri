@@ -405,3 +405,108 @@ A collapsed reference takes the block after its `[]`:
 .
 <p><a href="/u" class="a">ref</a> <img src="/u" alt="ref" class="b"></p>
 ````````````````````````````````
+
+A block after markup that ends up as text, or after inline HTML, goes on the
+block it ends, as after plain text:
+
+```````````````````````````````` example
+see [brackets]{.a}
+
+foo_{.b}
+
+a <b>bold</b>{.c}
+
+# see [brackets]{.d}
+.
+<p class="a">see [brackets]</p>
+<p class="b">foo_</p>
+<p class="c">a <b>bold</b></p>
+<h1 class="d">see [brackets]</h1>
+````````````````````````````````
+
+Inline math takes no attributes, so a block after it goes on the paragraph:
+
+```````````````````````````````` example
+$x${.m}
+.
+<p class="m"><code class="language-math math-inline">x</code></p>
+````````````````````````````````
+
+A block that a list item gets from its own line and from the end of its first
+line keeps both:
+
+```````````````````````````````` example
+- item (x){.a}
+  {.b}
+.
+<ul>
+<li class="b a">item (x)</li>
+</ul>
+````````````````````````````````
+
+A task list item and its list keep the class GFM gives them, after the
+attribute classes, and the checkbox counts toward the item's indentation:
+
+```````````````````````````````` example
+- [ ] task {.a}
+- [x] done
+  {.b}
+.
+<ul class="contains-task-list">
+<li class="a task-list-item"><input type="checkbox" disabled> task</li>
+<li class="b task-list-item"><input type="checkbox" checked disabled> done</li>
+</ul>
+````````````````````````````````
+
+```````````````````````````````` example
+- [ ] one
+- [x] two
+{.list}
+.
+<ul class="list contains-task-list">
+<li class="task-list-item"><input type="checkbox" disabled> one</li>
+<li class="task-list-item"><input type="checkbox" checked disabled> two</li>
+</ul>
+````````````````````````````````
+
+In a definition list, a block ending a term goes on the term. One ending a
+tight definition's line goes on the definition, as its paragraph isn't
+rendered, and one in a loose definition on its paragraph. A line of its own
+goes by its indentation, as in a list item:
+
+```````````````````````````````` example_deflists
+Term {.t}
+: tight {.d}
+
+Loose
+:   para one {.p1}
+
+    para two
+.
+<dl>
+<dt class="t">Term</dt>
+<dd class="d">tight</dd>
+<dt>Loose</dt>
+<dd>
+<p class="p1">para one</p>
+<p>para two</p>
+</dd>
+</dl>
+````````````````````````````````
+
+```````````````````````````````` example_deflists
+Term
+: def
+  {.own}
+
+Other
+: def
+{.lazy}
+.
+<dl class="lazy">
+<dt>Term</dt>
+<dd class="own">def</dd>
+<dt>Other</dt>
+<dd>def</dd>
+</dl>
+````````````````````````````````
