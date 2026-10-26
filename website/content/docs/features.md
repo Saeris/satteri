@@ -198,7 +198,7 @@ MDX treats `{...}` as a JavaScript expression, which normally collides with the 
 # Welcome {name}
 ```
 
-A `{...}` that *is* valid JavaScript stays an expression even when it looks like attributes: `{hidden}`, `{level=2}` and `{title="Home"}` evaluate rather than apply — silently, and unlike in plain Markdown. Add a `#`/`.` shorthand to force attributes; `{#id hidden}` applies both.
+A `{...}` that _is_ valid JavaScript stays an expression even when it looks like attributes: `{hidden}`, `{level=2}` and `{title="Home"}` evaluate rather than apply — silently, and unlike in plain Markdown. Add a `#`/`.` shorthand to force attributes; `{#id hidden}` applies both.
 
 ## Attributes
 
@@ -249,20 +249,20 @@ A block ending a paragraph's last line goes on the paragraph, or on the list ite
 
 ```html
 <ul class="groceries">
-<li class="fresh">Milk</li>
-<li>Eggs</li>
+  <li class="fresh">Milk</li>
+  <li>Eggs</li>
 </ul>
 <table class="inventory">
-<thead>
-<tr>
-<th class="name">Item</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Milk</td>
-</tr>
-</tbody>
+  <thead>
+    <tr>
+      <th class="name">Item</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Milk</td>
+    </tr>
+  </tbody>
 </table>
 ```
 

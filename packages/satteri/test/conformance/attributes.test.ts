@@ -62,9 +62,15 @@ describe("attributes: conformance vs markdown-it-attrs", () => {
       "block: nested lists take blocks by indentation",
       "- item 1{.a}\n  - nested item {.b}\n  {.c}\n    1. nested nested item {.d}\n    {.e}",
     ],
-    ["block: a paragraph of its own goes on the outer list", "- item\n  - nested\n  {.red}\n\n{.blue}"],
+    [
+      "block: a paragraph of its own goes on the outer list",
+      "- item\n  - nested\n  {.red}\n\n{.blue}",
+    ],
     ["block: a lazy line of its own after a blockquote goes on it", "> quote\n{.c}"],
-    ["block: a line of its own before more blocks goes on the paragraph", "> para\n> {.x}\n>\n> more"],
+    [
+      "block: a line of its own before more blocks goes on the paragraph",
+      "> para\n> {.x}\n>\n> more",
+    ],
     ["block: a paragraph of its own after a list", "- a\n- b\n\n{.my-list}"],
     [
       "block: table cells and a paragraph of its own after the table",
