@@ -469,3 +469,60 @@ fn definition_list_test_26() {
 
     test_markdown_html(original, expected, 0, false, false, false, false, true, false);
 }
+
+#[test]
+fn definition_list_test_27() {
+    let original = r##"Apple
+~   Red.
+"##;
+    let expected = r##"<dl>
+<dt>Apple</dt>
+<dd>Red.</dd>
+</dl>
+"##;
+
+    test_markdown_html(original, expected, 0, false, false, false, false, true, false);
+}
+
+#[test]
+fn definition_list_test_28() {
+    let original = r##"Apple
+:   Red.
+~   Green.
+"##;
+    let expected = r##"<dl>
+<dt>Apple</dt>
+<dd>Red.</dd>
+<dd>Green.</dd>
+</dl>
+"##;
+
+    test_markdown_html(original, expected, 0, false, false, false, false, true, false);
+}
+
+#[test]
+fn definition_list_test_29() {
+    let original = r##"Apple
+~~~
+Red.
+~~~
+"##;
+    let expected = r##"<p>Apple</p>
+<pre><code>Red.
+</code></pre>
+"##;
+
+    test_markdown_html(original, expected, 0, false, false, false, false, true, false);
+}
+
+#[test]
+fn definition_list_test_30() {
+    let original = r##"Apple
+~Red.
+"##;
+    let expected = r##"<p>Apple
+~Red.</p>
+"##;
+
+    test_markdown_html(original, expected, 0, false, false, false, false, true, false);
+}
