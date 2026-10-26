@@ -476,6 +476,27 @@ describe("data hints on freshly emitted mdast nodes (fresh-node path)", () => {
   });
 });
 
+describe("data hints on a code block apply to its <code>, as in mdast-util-to-hast", () => {
+  const CASES: Array<[string, DataPatch]> = [
+    ["hProperties join the language class", { hProperties: { id: "c" } }],
+    [
+      "an hProperties className replaces the language class",
+      { hProperties: { className: ["hl"], id: "c" } },
+    ],
+    ["hName renames the <code>, not the <pre>", { hName: "samp" }],
+    ["hChildren replace the code text", { hChildren: [{ type: "text", value: "replaced" }] }],
+  ];
+
+  for (const [name, patch] of CASES) {
+    test(name, () =>
+      assertHtmlMatches("```js\nx\n```", {
+        remark: mutateOnRemark((n) => n.type === "code", patch),
+        satteri: mutateOnSatteri("code", (n) => n.type === "code", patch),
+      }),
+    );
+  }
+});
+
 describe("data hints on table rows and cells, as in mdast-util-to-hast", () => {
   const TABLE = "| A | B |\n| - | - |\n| c | d |";
   const CASES: Array<[string, "tableRow" | "tableCell", (n: MdastNodes) => boolean, DataPatch]> = [
@@ -510,6 +531,40 @@ describe("data hints on table rows and cells, as in mdast-util-to-hast", () => {
       assertHtmlMatches(TABLE, {
         remark: mutateOnRemark(predicate, patch),
         satteri: mutateOnSatteri(type, (n) => predicate(n as MdastNodes), patch),
+      }),
+    );
+  }
+});
+
+function isFootnoteNote(n: MdastNodes): boolean {
+  if (n.type !== "paragraph") return false;
+  const first = n.children[0];
+  return first?.type === "text" && first.value === "Note";
+}
+
+describe("data hints on a footnote's last paragraph, as in mdast-util-to-hast", () => {
+  const FOOTNOTE = "Text[^1]\n\n[^1]: Note";
+  const CASES: Array<[string, DataPatch]> = [
+    [
+      "hProperties apply to the <p> holding the backreference",
+      { hProperties: { className: ["note"] } },
+    ],
+    [
+      "hChildren come before the backreference",
+      { hChildren: [{ type: "text", value: "replaced" }] },
+    ],
+  ];
+
+  for (const [name, patch] of CASES) {
+    test(name, () =>
+      assertHtmlMatches(FOOTNOTE, {
+        remark: mutateOnRemark(isFootnoteNote, patch),
+        // mdast-util-to-hast pushes the backreference into the hChildren array it is given.
+        satteri: mutateOnSatteri(
+          "paragraph",
+          (n) => isFootnoteNote(n as MdastNodes),
+          structuredClone(patch),
+        ),
       }),
     );
   }

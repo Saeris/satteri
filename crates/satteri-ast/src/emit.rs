@@ -409,12 +409,11 @@ fn emit_node_at<S: ConvertSink>(node_id: u32, ctx: &EmitCtx<'_, '_>, sink: &mut 
 
         Some(MdastNodeType::Code) => {
             let code_data = decode_code_data(view.get_type_data(node_id));
-            sink.open_source_element("pre", node_id);
-            if sink.finish_source_attrs() == Children::Replaced {
-                sink.close_element("pre");
-                return;
-            }
-            sink.open_element("code", Pos::Node(node_id));
+            // As in mdast-util-to-hast, the node's data applies to the `<code>`,
+            // overlaying its language class, and the `<pre>` stays bare.
+            sink.open_element("pre", Pos::Node(node_id));
+            sink.finish_attrs();
+            sink.open_source_element("code", node_id);
             if code_data.lang.len > 0 {
                 let lang = view.get_str(code_data.lang);
                 // A character reference can decode to whitespace, so only the first word names the language.
@@ -424,7 +423,11 @@ fn emit_node_at<S: ConvertSink>(node_id: u32, ctx: &EmitCtx<'_, '_>, sink: &mut 
                     AttrValue::Prefixed(PROP_SPACE_SEP, "language-", first),
                 );
             }
-            sink.finish_attrs();
+            if sink.finish_source_attrs() == Children::Replaced {
+                sink.close_element("code");
+                sink.close_element("pre");
+                return;
+            }
             sink.code_info(code_data.lang, code_data.meta);
             sink.code_block_text(view.get_str(code_data.value), Pos::None);
             sink.close_element("code");
@@ -1091,8 +1094,10 @@ fn emit_paragraph_with_backrefs<S: ConvertSink>(
     depth: u32,
 ) {
     let view = ctx.view;
-    open_plain(sink, "p", Pos::Node(para_id));
-    if let Some((&last_id, prefix)) = view.get_children(para_id).split_last() {
+    sink.open_source_element("p", para_id);
+    if sink.finish_source_attrs() == Children::Replaced {
+        sink.text(" ", Pos::None);
+    } else if let Some((&last_id, prefix)) = view.get_children(para_id).split_last() {
         for &cid in prefix {
             emit_node(cid, ctx, sink, depth + 1);
         }
