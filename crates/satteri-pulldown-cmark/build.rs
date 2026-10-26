@@ -55,6 +55,9 @@ fn generate_tests_from_spec() {
         File::open(file_path)
             .and_then(|mut f| f.read_to_string(&mut raw_spec))
             .expect("Could not read the spec file");
+        // A Windows checkout with `core.autocrlf` gives the specs CRLF line endings,
+        // which the example parser does not match.
+        let raw_spec = raw_spec.replace("\r\n", "\n");
 
         let rs_test_file = PathBuf::from("./tests/suite/")
             .join(file_path.file_name().expect("Invalid filename"))
@@ -109,6 +112,9 @@ fn {}_test_{i}() {{
             n_tests += 1;
         }
 
+        // A spec the parser cannot read would otherwise leave an empty suite that passes.
+        assert!(n_tests > 0, "No tests generated from {file_path:?}");
+
         println!(
             "cargo:warning=Generated {} tests in {:?}",
             n_tests, rs_test_file
@@ -151,6 +157,7 @@ fn base_options_for_spec(spec_name: &str) -> u32 {
     const GFM: u32 = 1 << 11;
     const SUPERSCRIPT: u32 = 1 << 13;
     const MATH_MULTI_DOLLAR: u32 = 1 << 23;
+    const ATTRIBUTES: u32 = 1 << 24;
 
     match spec_name {
         // CommonMark spec: no extensions
@@ -167,6 +174,7 @@ fn base_options_for_spec(spec_name: &str) -> u32 {
         // alongside footnotes, so the expected HTML assumes both.
         "footnotes" => FOOTNOTES | GFM,
         "heading_attrs" => HEADING_ATTRIBUTES,
+        "attributes" => ATTRIBUTES | STRIKETHROUGH | TABLES | TASKLISTS | MATH,
         "math" => MATH,
         // Multi-dollar math only: `$$...$$` and `$$` fences parse, but a lone
         // `$` stays literal (remark-math `singleDollarTextMath: false`).

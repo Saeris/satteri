@@ -14,6 +14,7 @@ use satteri_arena::line_ending_iter;
 use satteri_arena::mdx_types::Location;
 use unicase::UniCase;
 
+use crate::block_attributes::{attribute_chain_start, may_end_inline_element};
 use crate::linklabel::{LinkLabel, scan_link_label_rest};
 #[cfg(feature = "mdx")]
 use crate::mdx::*;
@@ -479,27 +480,34 @@ impl<'a, 'b> FirstPass<'a, 'b> {
                 .options
                 .contains(Options::ENABLE_DEFINITION_LIST)
                 .then(|| {
-                    self.tree
-                        .cur()
-                        .map(|cur| (self.tree[cur].child, &mut self.tree[cur].item))
+                    self.tree.cur().map(|cur| {
+                        let child = self.tree[cur].child;
+                        (
+                            child,
+                            spans_lines(&self.tree, child),
+                            &mut self.tree[cur].item,
+                        )
+                    })
                 })
                 .flatten()
-                .filter(|(_, item)| {
+                .filter(|(_, spans_lines, item)| {
                     match item.body {
-                        // A term may sit at most one blank line from its
-                        // definition (pandoc / mdast-util-definition-list); two+
-                        // disconnect it. `item.end` includes the paragraph's
-                        // trailing line ending, so the gap to the marker holds 0
-                        // line endings when tight, 1 when loose, 2+ when disconnected.
+                        // A term fits on one line (pandoc), and may sit at most
+                        // one blank line from its definition (pandoc /
+                        // mdast-util-definition-list); two+ disconnect it.
+                        // `item.end` includes the paragraph's trailing line
+                        // ending, so the gap to the marker holds 0 line endings
+                        // when tight, 1 when loose, 2+ when disconnected.
                         ItemBody::Paragraph | ItemBody::TightParagraph => {
                             let gap_start = item.end.min(container_start);
-                            line_ending_iter(&bytes[gap_start..container_start])
-                                .take(2)
-                                .count()
-                                <= 1
+                            !spans_lines
+                                && line_ending_iter(&bytes[gap_start..container_start])
+                                    .take(2)
+                                    .count()
+                                    <= 1
                         }
-                        ItemBody::MaybeDefinitionListTitle
-                        | ItemBody::DefinitionListDefinition(..) => true,
+                        ItemBody::MaybeDefinitionListTitle => !spans_lines,
+                        ItemBody::DefinitionListDefinition(..) => true,
                         _ => false,
                     }
                 })
@@ -508,7 +516,7 @@ impl<'a, 'b> FirstPass<'a, 'b> {
                         line_start
                             .scan_definition_list_definition_marker_with_indent(outer_indent)?,
                         item.0,
-                        item.1,
+                        item.2,
                     ))
                 })
             {
@@ -3641,7 +3649,7 @@ impl<'a, 'b> FirstPass<'a, 'b> {
         let header_start = ix;
         let header_node_idx = self.tree.push(); // so that we can set the endpoint later
 
-        let attr_block = if self.options.contains(Options::ENABLE_HEADING_ATTRIBUTES) {
+        let attr_block = if self.options.has_heading_attributes() {
             let header_end = header_start + scan_nextline(&bytes[header_start..]);
             self.extract_and_parse_heading_attribute_block(header_start, header_end)
                 .map(|block| (block, header_end))
@@ -4147,7 +4155,7 @@ impl<'a, 'b> FirstPass<'a, 'b> {
         header_start: usize,
         header_end: usize,
     ) -> Option<HeadingAttrBlock<'a>> {
-        if !self.options.contains(Options::ENABLE_HEADING_ATTRIBUTES) {
+        if !self.options.has_heading_attributes() {
             return None;
         }
 
@@ -4185,6 +4193,16 @@ impl<'a, 'b> FirstPass<'a, 'b> {
         let tail_has_content = bytes[block_close..header_end]
             .iter()
             .any(|&b| !matches!(b, b' ' | b'\t' | b'\n' | b'\r'));
+        // With attributes on inline elements, one ending the heading
+        // (`# Title **b**{.x}`) reads the block first, so it's left for the
+        // block pass to give the heading if that element doesn't take it.
+        if self.options.contains(Options::ENABLE_ATTRIBUTES)
+            && !self.options.contains(Options::ENABLE_MDX)
+            && !tail_has_content
+            && may_end_inline_element(self.text, attribute_chain_start(self.text, block_open))
+        {
+            return None;
+        }
         Some(HeadingAttrBlock {
             attrs,
             block_open,
@@ -4304,6 +4322,26 @@ fn listitem_interrupts(bytes: &[u8], current_container: bool, tree: &Tree<Item>)
             && scan_blank_line(&bytes[ix..]).is_none()
 }
 
+/// Whether the inline items from `child` on hold more than one line of text: a
+/// definition list term fits on one line (pandoc), so a paragraph of more isn't
+/// one. A break the paragraph ends on doesn't start a line of its own yet.
+fn spans_lines(tree: &Tree<Item>, child: Option<TreeIndex>) -> bool {
+    let mut cur = child;
+    while let Some(node) = cur {
+        let next = tree[node].next;
+        if next.is_some()
+            && matches!(
+                tree[node].item.body,
+                ItemBody::SoftBreak | ItemBody::HardBreak(..)
+            )
+        {
+            return true;
+        }
+        cur = next;
+    }
+    false
+}
+
 #[allow(clippy::too_many_arguments)]
 fn scan_paragraph_interrupt_no_table(
     bytes: &[u8],
@@ -4356,7 +4394,7 @@ fn scan_paragraph_interrupt_no_table(
                         ItemBody::Paragraph
                             | ItemBody::TightParagraph
                             | ItemBody::MaybeDefinitionListTitle
-                    )
+                    ) && !spans_lines(tree, tree[cur].child)
                 }))
                 || tree.walk_spine().nth(tree_position).is_some_and(|cur| {
                     matches!(tree[*cur].item.body, ItemBody::DefinitionListDefinition(..))
@@ -5907,8 +5945,6 @@ fn scan_directive_attributes(bytes: &[u8]) -> Option<(Vec<(CowStr<'_>, CowStr<'_
 
 fn parse_directive_attrs_inner(bytes: &[u8]) -> Vec<(CowStr<'_>, CowStr<'_>)> {
     let mut attrs: Vec<(CowStr<'_>, CowStr<'_>)> = Vec::new();
-    let mut classes: Vec<&str> = Vec::new();
-    let mut id: Option<&str> = None;
     let text = core::str::from_utf8(bytes).unwrap_or("");
     let mut i = 0;
 
@@ -5924,7 +5960,7 @@ fn parse_directive_attrs_inner(bytes: &[u8]) -> Vec<(CowStr<'_>, CowStr<'_>)> {
                     i += 1;
                 }
                 if i > start {
-                    id = Some(&text[start..i]);
+                    set_directive_attr(&mut attrs, "id", &text[start..i]);
                 }
             }
             b'.' => {
@@ -5934,7 +5970,7 @@ fn parse_directive_attrs_inner(bytes: &[u8]) -> Vec<(CowStr<'_>, CowStr<'_>)> {
                     i += 1;
                 }
                 if i > start {
-                    classes.push(&text[start..i]);
+                    set_directive_attr(&mut attrs, "class", &text[start..i]);
                 }
             }
             _ => {
@@ -5969,7 +6005,7 @@ fn parse_directive_attrs_inner(bytes: &[u8]) -> Vec<(CowStr<'_>, CowStr<'_>)> {
                         if i < bytes.len() {
                             i += 1; // skip closing quote
                         }
-                        attrs.push((name.into(), val.into()));
+                        set_directive_attr(&mut attrs, name, val);
                     } else {
                         let val_start = i;
                         while i < bytes.len()
@@ -5979,22 +6015,31 @@ fn parse_directive_attrs_inner(bytes: &[u8]) -> Vec<(CowStr<'_>, CowStr<'_>)> {
                         {
                             i += 1;
                         }
-                        attrs.push((name.into(), text[val_start..i].into()));
+                        set_directive_attr(&mut attrs, name, &text[val_start..i]);
                     }
                 } else {
-                    attrs.push((name.into(), "".into()));
+                    set_directive_attr(&mut attrs, name, "");
                 }
             }
         }
     }
 
-    if let Some(id_val) = id {
-        attrs.push(("id".into(), id_val.into()));
-    }
-    if !classes.is_empty() {
-        attrs.push(("class".into(), classes.join(" ").into()));
-    }
     attrs
+}
+
+/// Sets an attribute as mdast-util-directive does: a key keeps the place it
+/// first appeared and a later value replaces it, except that classes join.
+fn set_directive_attr<'a>(attrs: &mut Vec<(CowStr<'a>, CowStr<'a>)>, key: &'a str, value: &'a str) {
+    match attrs
+        .iter_mut()
+        .find(|(existing, _)| existing.as_ref() == key)
+    {
+        Some((_, existing)) if key == "class" => {
+            *existing = format!("{} {value}", existing.as_ref()).into();
+        }
+        Some((_, existing)) => *existing = value.into(),
+        None => attrs.push((key.into(), value.into())),
+    }
 }
 
 fn is_attr_shortcut_terminator(c: u8) -> bool {
@@ -6918,10 +6963,12 @@ fn extract_attribute_block_content_from_header_text(
 /// See also: [`Options::ENABLE_HEADING_ATTRIBUTES`].
 ///
 /// [`Options::ENABLE_HEADING_ATTRIBUTES`]: `crate::Options::ENABLE_HEADING_ATTRIBUTES`
-fn parse_inside_attribute_block(inside_attr_block: &str) -> Option<HeadingAttributes<'_>> {
-    let mut id = None;
-    let mut classes = Vec::new();
-    let mut attrs = Vec::new();
+pub(crate) fn parse_inside_attribute_block(
+    inside_attr_block: &str,
+) -> Option<HeadingAttributes<'_>> {
+    let mut attributes = HeadingAttributes {
+        entries: Vec::new(),
+    };
 
     let bytes = inside_attr_block.as_bytes();
     let len = bytes.len();
@@ -6955,29 +7002,71 @@ fn parse_inside_attribute_block(inside_attr_block: &str) -> Option<HeadingAttrib
         if attr.len() > 1 {
             let first_byte = attr.as_bytes()[0];
             if first_byte == b'#' {
-                id = Some(attr[1..].into());
+                attributes.set_id(attr[1..].into());
             } else if first_byte == b'.' {
-                classes.push(attr[1..].into());
+                attributes.add_class(attr[1..].into());
             } else if let Some((key, value)) = attr.split_once('=') {
+                if !is_attribute_name(key) {
+                    return None;
+                }
                 // `id=`/`class=` fold into the `#`/`.` channels so a heading
                 // mixing shorthand and explicit forms emits a single id and
                 // one merged class list instead of duplicate attributes.
                 let value = unquote_attribute_value(value);
                 match key {
-                    "id" => id = Some(value.into()),
-                    "class" => classes.push(value.into()),
-                    _ => attrs.push((key.into(), Some(value.into()))),
+                    "id" => attributes.set_id(value.into()),
+                    "class" => attributes.add_class(value.into()),
+                    _ => attributes.set_other(key.into(), Some(value.into())),
                 }
+            } else if is_attribute_name(attr) {
+                attributes.set_other(attr.into(), None);
             } else {
-                attrs.push((attr.into(), None));
+                // As in Pandoc, a block with anything that isn't an attribute
+                // stays text, so other `{...}` syntax (`{base|ruby}`) is left be.
+                return None;
             }
         }
     }
 
-    if id.is_none() && classes.is_empty() && attrs.is_empty() {
+    if attributes.entries.is_empty() {
         return None;
     }
-    Some(HeadingAttributes { id, classes, attrs })
+    Some(attributes)
+}
+
+/// Length of a `{...}` attribute block at the start of `bytes`, braces included.
+/// It ends at the first `}` outside a quoted value (a quote opens only after
+/// `=`, as in [`parse_inside_attribute_block`]) and can't span lines or nest.
+pub(crate) fn scan_inline_attribute_block(bytes: &[u8]) -> Option<usize> {
+    if bytes.first() != Some(&b'{') {
+        return None;
+    }
+    let mut quote = None;
+    for (i, &b) in bytes.iter().enumerate().skip(1) {
+        match quote {
+            _ if b == b'\n' || b == b'\r' => return None,
+            Some(q) if b == q => quote = None,
+            Some(_) => {}
+            None => match b {
+                b'}' => return Some(i + 1),
+                b'{' => return None,
+                b'"' | b'\'' if bytes[i - 1] == b'=' => quote = Some(b),
+                _ => {}
+            },
+        }
+    }
+    None
+}
+
+/// Whether `name` can name an attribute: a letter, `_`, `:` or `@`, then
+/// letters, digits, `_`, `:`, `.`, `@` or `-`. This covers `data-*`, `aria-*`
+/// and framework names such as `x-on:click.prevent` or `@click`.
+fn is_attribute_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    chars
+        .next()
+        .is_some_and(|c| c.is_alphabetic() || matches!(c, '_' | ':' | '@'))
+        && chars.all(|c| c.is_alphanumeric() || matches!(c, '_' | ':' | '.' | '@' | '-'))
 }
 
 /// Strips a matching pair of surrounding `"` or `'` from an attribute value.

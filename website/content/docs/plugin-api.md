@@ -75,6 +75,7 @@ interface PluginFactoryContext {
   readonly sourceFormat: "markdown" | "mdx";
   readonly source: string;
   readonly data: Data;
+  readonly features: Features;
 }
 ```
 
@@ -84,7 +85,7 @@ const onlyChangelogs = (ctx) => (ctx.fileURL?.pathname.endsWith("/CHANGELOG.md")
 markdownToHtml(source, { mdastPlugins: [onlyChangelogs, myPlugin] });
 ```
 
-Only what is known before parsing is available: there is no tree and no frontmatter yet. `source` is the unparsed document, meant for cheap checks such as "does this contain a code fence at all", not for parsing Markdown by hand. `data` is the same bag the visitors later read and write through `ctx.data`, so a factory can seed it for the plugins that run after it.
+Only what is known before parsing is available: there is no tree and no frontmatter yet. `source` is the unparsed document, meant for cheap checks such as "does this contain a code fence at all", not for parsing Markdown by hand. `data` is the same bag the visitors later read and write through `ctx.data`, so a factory can seed it for the plugins that run after it. `features` is the `features` option as given (or `{}`, the defaults), so a plugin that compiles a fragment of its own can parse it with the same syntax as the document: `markdownToMdast(fragment, { features: ctx.features })`.
 
 Skipping here rather than returning early inside a visitor is what makes it worth doing: a plugin that is never added registers no visitors, and the pipeline picks its parsing and rendering strategy from the plugins that remain. A document that skips every plugin is compiled by the same fast path as one that was passed no plugins, and position tracking is skipped unless a plugin that actually runs asks for it. A factory returning a skip value drops the whole bundle it would otherwise have returned, so a preset can enable or disable itself as a unit. Factories still run once per compile even when they skip, so keep them cheap.
 
@@ -109,7 +110,7 @@ A single opted-in plugin enables positions for the whole pipeline, so a later pl
 An MDAST plugin maps node types to visitor functions. Each visitor receives the node (as `Readonly`) and a `ctx` object.
 
 ```ts
-type MdastVisitor<N> = (node: Readonly<N>, ctx: MdastVisitorContext) => MdastVisitorResult | Promise<MdastVisitorResult>;
+type MdastVisitorFn<N> = (node: Readonly<N>, ctx: MdastVisitorContext) => MdastVisitorResult | Promise<MdastVisitorResult>;
 
 type MdastVisitorResult =
   | MdastNode // replace with this node
@@ -121,6 +122,24 @@ type MdastVisitorResult =
 ```
 
 To inject HTML, return `{ raw: "<span>…</span>", mdxExpressions: false }` rather than an mdast `html` node (`{ type: "html", value }`) — the latter renders under `markdownToHtml` but throws under `mdxToJs`. Under `markdownToJs` neither form survives: HTML has no JSX representation there, so it is dropped along with any HTML the document itself contains. Enable [`features: { rawHtml: true }`](/docs/entry-points/#reparsing-raw-html-rawhtml) to have injected HTML parsed into real elements. See [Return value semantics](#return-value-semantics).
+
+`MdastVisitorFn` is exported from `satteri`, so a visitor shared by several node types can be typed once for all of them:
+
+```ts
+import type { Blockquote, ListItem, Paragraph } from "mdast";
+import { defineMdastPlugin, type MdastVisitorFn } from "satteri";
+
+const visitParent: MdastVisitorFn<Paragraph | Blockquote | ListItem> = (node, ctx) => {
+  /* ... */
+};
+
+const plugin = defineMdastPlugin({
+  name: "my-plugin",
+  paragraph: visitParent,
+  blockquote: visitParent,
+  listItem: visitParent,
+});
+```
 
 ### Supported visitor keys
 
@@ -268,8 +287,10 @@ const plugin = defineHastPlugin({
 Leaf and value nodes don't carry a name, so they take a plain function that fires for every node of that type.
 
 ```ts
-type HastVisitor<N> = (node: Readonly<N>, ctx: HastVisitorContext) => HastNode | void | Promise<HastNode | void>;
+type HastVisitorFn<N> = (node: Readonly<N>, ctx: HastVisitorContext) => HastNode | void | Promise<HastNode | void>;
 ```
+
+Like `MdastVisitorFn`, `HastVisitorFn` is exported from `satteri` for typing a visitor shared by several of these keys.
 
 | Key                 | Notes                           |
 | ------------------- | ------------------------------- |

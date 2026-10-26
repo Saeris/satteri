@@ -344,6 +344,8 @@ function emitHastOp(
   // Standalone HTML serialization does not need MDX support or JSON-serializable metadata.
   if (document && (n.type as string).startsWith("mdx")) return true;
   w.open(type);
+  // A standalone document is only serialized, and has no source for a position to point into.
+  if (!document) w.position(n.position);
   if (type === HAST_ELEMENT) {
     w.str(OF_TAGNAME, typeof n.tagName === "string" ? n.tagName : "div");
     const props = n.properties;
@@ -657,7 +659,7 @@ export interface HastFilteredVisitor<N extends HastNode = HastNode> {
   visit(node: Readonly<N>, ctx: HastVisitorContext): HastNode | void | Promise<HastNode | void>;
 }
 
-type HastVisitorFn<N extends HastNode = HastNode> = (
+export type HastVisitorFn<N extends HastNode = HastNode> = (
   node: Readonly<N>,
   ctx: HastVisitorContext,
 ) => HastNode | void | Promise<HastNode | void>;

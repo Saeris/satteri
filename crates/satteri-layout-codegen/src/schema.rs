@@ -1231,6 +1231,11 @@ pub const OP_CODES: WireTable = WireTable {
             0x0b,
             "[len: u32 LE][ColumnAlign bytes] — table column alignment",
         ),
+        wc(
+            "OP_POSITION",
+            0x0c,
+            "[start line, start column, end line, end column: u32 LE each] — source position, columns in UTF-16 units",
+        ),
     ],
 };
 
@@ -1410,6 +1415,7 @@ pub const PARSE_OPTION_BITS: &[(&str, u32)] = &[
     ("ENABLE_SMART_DASHES", 19),
     ("ENABLE_SMART_ELLIPSES", 20),
     ("ENABLE_MATH_MULTI_DOLLAR", 23),
+    ("ENABLE_ATTRIBUTES", 24),
 ];
 
 /// `ArenaNode` `#[repr(C)]` size; pinned to the real struct by the generated
