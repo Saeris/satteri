@@ -166,6 +166,8 @@ The id and classes appear on the rendered heading, producing the following HTML:
 <h3 id="intro" data-level="2" hidden="">Note</h3>
 ```
 
+As in Pandoc, a block counts only if everything in it is an attribute: an id, a class, or a key that names one (letters, digits, `-`, `_`, `:`, `.` and `@`, as in `data-x`, `x-on:click` or `@click`). Anything else keeps the whole block as text, so other `{...}` syntax, such as `{base|reading}` ruby annotations, is left alone.
+
 Wrap a value in `"` or `'` quotes when it needs to contain spaces:
 
 ```markdown
@@ -262,13 +264,15 @@ Default: `false`.
 definitionList?: boolean
 ```
 
-A term line followed by one or more colon-marked definitions becomes a definition list, following the [pandoc / PHP Markdown Extra](https://pandoc.org/MANUAL.html#definition-lists) syntax:
+A term line followed by one or more definitions, each marked with a colon (`:`) or a tilde (`~`), becomes a definition list, following the [pandoc / PHP Markdown Extra](https://pandoc.org/MANUAL.html#definition-lists) syntax:
 
 ```text
 Apple
 :   Pomaceous fruit.
 :   A tech company.
 ```
+
+A term fits on one line, as in pandoc: after a paragraph of two or more lines, a marker line continues the paragraph instead of starting a definition.
 
 A tight definition puts its content directly in the `<dd>`; a loose one — separated from its term by a blank line — wraps it in a `<p>`. The parser produces `descriptionList`, `descriptionTerm`, and `descriptionDetails` mdast nodes, each available to plugins.
 

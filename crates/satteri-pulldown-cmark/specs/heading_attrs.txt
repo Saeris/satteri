@@ -317,10 +317,10 @@ that characters are their value.
 
 ```````````````````````````````` example
 # H1 {foo}
-## H2 {#myid unknown this#is.ignored attr=value .myclass}
+## H2 {#myid unknown attr=value .myclass}
 .
 <h1 foo="">H1</h1>
-<h2 id="myid" unknown="" this#is.ignored="" attr="value" class="myclass">H2</h2>
+<h2 id="myid" unknown="" attr="value" class="myclass">H2</h2>
 ````````````````````````````````
 
 ```````````````````````````````` example
@@ -713,4 +713,18 @@ the first class:
 .
 <h1 class="a c" id="b" data-x="1">Heading</h1>
 <h2 k="2" id="j">Heading</h2>
+````````````````````````````````
+
+As in Pandoc, a block is attributes only if everything in it is one: an id, a
+class, or a key that names an attribute. Anything else keeps the whole block as
+text, so other `{...}` syntax, such as ruby annotations, is left alone:
+
+```````````````````````````````` example
+# Ruby {base|reading}
+## H2 {#id this#is.text}
+### H3 {data-x=1 k|y=2}
+.
+<h1>Ruby {base|reading}</h1>
+<h2>H2 {#id this#is.text}</h2>
+<h3>H3 {data-x=1 k|y=2}</h3>
 ````````````````````````````````

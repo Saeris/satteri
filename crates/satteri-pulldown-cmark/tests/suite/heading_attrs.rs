@@ -287,10 +287,10 @@ fn heading_attrs_test_20() {
 #[test]
 fn heading_attrs_test_21() {
     let original = r##"# H1 {foo}
-## H2 {#myid unknown this#is.ignored attr=value .myclass}
+## H2 {#myid unknown attr=value .myclass}
 "##;
     let expected = r##"<h1 foo="">H1</h1>
-<h2 id="myid" unknown="" this#is.ignored="" attr="value" class="myclass">H2</h2>
+<h2 id="myid" unknown="" attr="value" class="myclass">H2</h2>
 "##;
 
     test_markdown_html(original, expected, 64, false, false, false, false, false, false);
@@ -660,6 +660,20 @@ fn heading_attrs_test_47() {
 "##;
     let expected = r##"<h1 class="a c" id="b" data-x="1">Heading</h1>
 <h2 k="2" id="j">Heading</h2>
+"##;
+
+    test_markdown_html(original, expected, 64, false, false, false, false, false, false);
+}
+
+#[test]
+fn heading_attrs_test_48() {
+    let original = r##"# Ruby {base|reading}
+## H2 {#id this#is.text}
+### H3 {data-x=1 k|y=2}
+"##;
+    let expected = r##"<h1>Ruby {base|reading}</h1>
+<h2>H2 {#id this#is.text}</h2>
+<h3>H3 {data-x=1 k|y=2}</h3>
 "##;
 
     test_markdown_html(original, expected, 64, false, false, false, false, false, false);
