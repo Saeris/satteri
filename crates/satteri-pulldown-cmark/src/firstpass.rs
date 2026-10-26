@@ -479,27 +479,34 @@ impl<'a, 'b> FirstPass<'a, 'b> {
                 .options
                 .contains(Options::ENABLE_DEFINITION_LIST)
                 .then(|| {
-                    self.tree
-                        .cur()
-                        .map(|cur| (self.tree[cur].child, &mut self.tree[cur].item))
+                    self.tree.cur().map(|cur| {
+                        let child = self.tree[cur].child;
+                        (
+                            child,
+                            spans_lines(&self.tree, child),
+                            &mut self.tree[cur].item,
+                        )
+                    })
                 })
                 .flatten()
-                .filter(|(_, item)| {
+                .filter(|(_, spans_lines, item)| {
                     match item.body {
-                        // A term may sit at most one blank line from its
-                        // definition (pandoc / mdast-util-definition-list); two+
-                        // disconnect it. `item.end` includes the paragraph's
-                        // trailing line ending, so the gap to the marker holds 0
-                        // line endings when tight, 1 when loose, 2+ when disconnected.
+                        // A term fits on one line (pandoc), and may sit at most
+                        // one blank line from its definition (pandoc /
+                        // mdast-util-definition-list); two+ disconnect it.
+                        // `item.end` includes the paragraph's trailing line
+                        // ending, so the gap to the marker holds 0 line endings
+                        // when tight, 1 when loose, 2+ when disconnected.
                         ItemBody::Paragraph | ItemBody::TightParagraph => {
                             let gap_start = item.end.min(container_start);
-                            line_ending_iter(&bytes[gap_start..container_start])
-                                .take(2)
-                                .count()
-                                <= 1
+                            !spans_lines
+                                && line_ending_iter(&bytes[gap_start..container_start])
+                                    .take(2)
+                                    .count()
+                                    <= 1
                         }
-                        ItemBody::MaybeDefinitionListTitle
-                        | ItemBody::DefinitionListDefinition(..) => true,
+                        ItemBody::MaybeDefinitionListTitle => !spans_lines,
+                        ItemBody::DefinitionListDefinition(..) => true,
                         _ => false,
                     }
                 })
@@ -508,7 +515,7 @@ impl<'a, 'b> FirstPass<'a, 'b> {
                         line_start
                             .scan_definition_list_definition_marker_with_indent(outer_indent)?,
                         item.0,
-                        item.1,
+                        item.2,
                     ))
                 })
             {
@@ -4304,6 +4311,26 @@ fn listitem_interrupts(bytes: &[u8], current_container: bool, tree: &Tree<Item>)
             && scan_blank_line(&bytes[ix..]).is_none()
 }
 
+/// Whether the inline items from `child` on hold more than one line of text: a
+/// definition list term fits on one line (pandoc), so a paragraph of more isn't
+/// one. A break the paragraph ends on doesn't start a line of its own yet.
+fn spans_lines(tree: &Tree<Item>, child: Option<TreeIndex>) -> bool {
+    let mut cur = child;
+    while let Some(node) = cur {
+        let next = tree[node].next;
+        if next.is_some()
+            && matches!(
+                tree[node].item.body,
+                ItemBody::SoftBreak | ItemBody::HardBreak(..)
+            )
+        {
+            return true;
+        }
+        cur = next;
+    }
+    false
+}
+
 #[allow(clippy::too_many_arguments)]
 fn scan_paragraph_interrupt_no_table(
     bytes: &[u8],
@@ -4356,7 +4383,7 @@ fn scan_paragraph_interrupt_no_table(
                         ItemBody::Paragraph
                             | ItemBody::TightParagraph
                             | ItemBody::MaybeDefinitionListTitle
-                    )
+                    ) && !spans_lines(tree, tree[cur].child)
                 }))
                 || tree.walk_spine().nth(tree_position).is_some_and(|cur| {
                     matches!(tree[*cur].item.body, ItemBody::DefinitionListDefinition(..))
@@ -6968,6 +6995,9 @@ pub(crate) fn parse_inside_attribute_block(
             } else if first_byte == b'.' {
                 attributes.add_class(attr[1..].into());
             } else if let Some((key, value)) = attr.split_once('=') {
+                if !is_attribute_name(key) {
+                    return None;
+                }
                 // `id=`/`class=` fold into the `#`/`.` channels so a heading
                 // mixing shorthand and explicit forms emits a single id and
                 // one merged class list instead of duplicate attributes.
@@ -6977,8 +7007,12 @@ pub(crate) fn parse_inside_attribute_block(
                     "class" => attributes.add_class(value.into()),
                     _ => attributes.set_other(key.into(), Some(value.into())),
                 }
-            } else {
+            } else if is_attribute_name(attr) {
                 attributes.set_other(attr.into(), None);
+            } else {
+                // As in Pandoc, a block with anything that isn't an attribute
+                // stays text, so other `{...}` syntax (`{base|ruby}`) is left be.
+                return None;
             }
         }
     }
@@ -7011,6 +7045,17 @@ pub(crate) fn scan_inline_attribute_block(bytes: &[u8]) -> Option<usize> {
         }
     }
     None
+}
+
+/// Whether `name` can name an attribute: a letter, `_`, `:` or `@`, then
+/// letters, digits, `_`, `:`, `.`, `@` or `-`. This covers `data-*`, `aria-*`
+/// and framework names such as `x-on:click.prevent` or `@click`.
+fn is_attribute_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    chars
+        .next()
+        .is_some_and(|c| c.is_alphabetic() || matches!(c, '_' | ':' | '@'))
+        && chars.all(|c| c.is_alphanumeric() || matches!(c, '_' | ':' | '.' | '@' | '-'))
 }
 
 /// Strips a matching pair of surrounding `"` or `'` from an attribute value.
